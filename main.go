@@ -2,79 +2,201 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net"
 	"os"
+	"strings"
+
+	"github.com/pion/webrtc/v3"
 )
 
-func StartServer(porta string) error {
-	ln, err := net.Listen("tcp", ":"+porta)
+func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error) {
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+		},
+	}
+
+	peerConnection, err := webrtc.NewPeerConnection(config)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer ln.Close()
 
-	log.Printf("Servidor à escuta na porta %s\n", porta)
-
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			log.Println("accept error:", err)
-			continue
-		}
-
-		go func(c net.Conn) {
-			defer c.Close()
-			r := bufio.NewReader(c)
-
-			msg, err := r.ReadString('\n')
-			if err != nil {
-				if err != io.EOF {
-					log.Println("read error:", err)
-				}
-				return
-			}
-			fmt.Printf("Mensagem de %s: %s", c.RemoteAddr(), msg)
-		}(conn)
+	dataChannel, err := peerConnection.CreateDataChannel("chat", nil)
+	if err != nil {
+		return nil, nil, err
 	}
+
+	dataChannel.OnOpen(func() {
+		fmt.Println("\n[+] Canal de dados aberto! A encriptação DTLS está ativa. Podes começar a falar.")
+	})
+
+	dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
+		fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
+		GravarMensagem(db, "Amigo", string(msg.Data))
+	})
+
+	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		d.OnMessage(func(msg webrtc.DataChannelMessage) {
+			fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
+			GravarMensagem(db, "Amigo", string(msg.Data))
+		})
+	})
+
+	return peerConnection, dataChannel, nil
 }
 
-func connectToPeer(ip_destino, porta string) error {
-	addr := net.JoinHostPort(ip_destino, porta)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+func Encode(obj interface{}) string {
+	BytesdoJson, err := json.Marshal(obj)
 
-	_, err = fmt.Fprintln(conn, "Olá da máquina A!")
-	return err
+	if err != nil {
+		panic(err)
+	}
+
+	textoBase64 := base64.StdEncoding.EncodeToString(BytesdoJson)
+	return textoBase64
+}
+
+func Decode(texto string, obj interface{}) {
+	bytesDoJson, err := base64.StdEncoding.DecodeString(texto)
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(bytesDoJson, obj)
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Uso: go run main.go [server|client]")
-		return
-	}
 
-	modo := os.Args[1]
+	db := InitDB()
 
-	if modo == "server" {
-		// Inicia o servidor na porta 5555
-		err := StartServer("5555")
+	defer db.Close()
+
+	var escolha string
+	fmt.Println("Escolhe: [1] Criar Sala ou [2] Entrar numa Sala")
+	fmt.Scanln(&escolha)
+	if escolha == "1" {
+		peerConnection, dataChannel, err := SetupWebRTC(db)
 		if err != nil {
-			log.Fatal("Erro ao iniciar servidor:", err)
+			log.Fatal("Erro fatal ao iniciar WebRTC:", err)
 		}
-	} else if modo == "client" {
-		// Liga-se ao nosso próprio computador (IP local: 127.0.0.1) na porta 5555
-		err := connectToPeer("127.0.0.1", "5555")
+
+		gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
+
+		offer, err := peerConnection.CreateOffer(nil)
 		if err != nil {
-			log.Fatal("Erro ao ligar ao servidor:", err)
+			log.Fatal(err)
 		}
-		fmt.Println("Mensagem enviada com sucesso!")
-	} else {
-		fmt.Println("Modo desconhecido. Escolhe 'server' ou 'client'.")
+
+		err = peerConnection.SetLocalDescription(offer)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		<-gatherComplete
+
+		offerBase64 := Encode(peerConnection.LocalDescription())
+
+		fmt.Println("\n=== SALA CRIADA COM SUCESSO ===")
+		fmt.Println("Copia o código abaixo e envia ao teu amigo:")
+		fmt.Println("--------------------------------------------------")
+		fmt.Println(offerBase64)
+		fmt.Println("--------------------------------------------------\n")
+		fmt.Println("Fico à espera do do teu Amigo. Cola aqui o código e prime Enter")
+
+		leitor := bufio.NewReader(os.Stdin)
+		codigoAmigo, _ := leitor.ReadString('\n')
+		codigoAmigo = strings.TrimSpace(codigoAmigo)
+
+		var answer webrtc.SessionDescription
+		Decode(codigoAmigo, &answer)
+
+		err = peerConnection.SetRemoteDescription(answer)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+
+		leitorChat := bufio.NewReader(os.Stdin)
+
+		for{
+			mensagem, _ := leitorChat.ReadString('\n')
+			mensagem = strings.TrimSpace(mensagem)
+
+			if mensagem == ""{
+				continue
+			}
+
+			dataChannel.SendText(mensagem)
+			GravarMensagem(db, "Eu", mensagem)
+
+		}
+
+	} else if escolha == "2" {
+
+		peerConnection, dataChannel, err := SetupWebRTC(db)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("Cola o código que o teu amigo enviou e prime Enter:")
+		leitor := bufio.NewReader(os.Stdin)
+		codigoAmigo, _ := leitor.ReadString('\n')
+		codigoAmigo = strings.TrimSpace(codigoAmigo)
+
+		var offer webrtc.SessionDescription
+		Decode(codigoAmigo, &offer)
+
+		err = peerConnection.SetRemoteDescription(offer)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		gatherComplete := webrtc.GatheringCompletePromise(peerConnection)
+
+		answer, err := peerConnection.CreateAnswer(nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		
+		err = peerConnection.SetLocalDescription(answer)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		<-gatherComplete
+
+		answerBase64 := Encode(peerConnection.LocalDescription())
+
+
+		fmt.Println("\n=== SUCESSO: RESPOSTA GERADA ===")
+		fmt.Println("Copia o código abaixo e devolve ao teu amigo (Host):")
+		fmt.Println("--------------------------------------------------")
+		fmt.Println(answerBase64)
+		fmt.Println("--------------------------------------------------")
+
+		leitorChat := bufio.NewReader(os.Stdin)
+
+		for{
+			mensagem, _ := leitorChat.ReadString('\n')
+			mensagem = strings.TrimSpace(mensagem)
+
+			if mensagem == ""{
+				continue
+			}
+
+			dataChannel.SendText(mensagem)
+			GravarMensagem(db, "Eu", mensagem)
+		}
 	}
 }
