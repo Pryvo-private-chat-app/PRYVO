@@ -83,7 +83,7 @@ func main() {
 	defer db.Close()
 
 	var escolha string
-	fmt.Println("Escolhe: [1] Criar Sala ou [2] Entrar numa Sala")
+	fmt.Println("Escolhe: [1] Criar Sala, [2] Entrar numa Sala ou [3] Limpar Histórico de Conversas")
 	fmt.Scanln(&escolha)
 	if escolha == "1" {
 		peerConnection, dataChannel, err := SetupWebRTC(db)
@@ -111,7 +111,7 @@ func main() {
 		fmt.Println("Copia o código abaixo e envia ao teu amigo:")
 		fmt.Println("--------------------------------------------------")
 		fmt.Println(offerBase64)
-		fmt.Println("--------------------------------------------------\n")
+		fmt.Println("--------------------------------------------------")
 		fmt.Println("Fico à espera do do teu Amigo. Cola aqui o código e prime Enter")
 
 		leitor := bufio.NewReader(os.Stdin)
@@ -126,14 +126,13 @@ func main() {
 			log.Fatal(err)
 		}
 
-
 		leitorChat := bufio.NewReader(os.Stdin)
 
-		for{
+		for {
 			mensagem, _ := leitorChat.ReadString('\n')
 			mensagem = strings.TrimSpace(mensagem)
 
-			if mensagem == ""{
+			if mensagem == "" {
 				continue
 			}
 
@@ -168,7 +167,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		
+
 		err = peerConnection.SetLocalDescription(answer)
 		if err != nil {
 			log.Fatal(err)
@@ -178,7 +177,6 @@ func main() {
 
 		answerBase64 := Encode(peerConnection.LocalDescription())
 
-
 		fmt.Println("\n=== SUCESSO: RESPOSTA GERADA ===")
 		fmt.Println("Copia o código abaixo e devolve ao teu amigo (Host):")
 		fmt.Println("--------------------------------------------------")
@@ -187,16 +185,18 @@ func main() {
 
 		leitorChat := bufio.NewReader(os.Stdin)
 
-		for{
+		for {
 			mensagem, _ := leitorChat.ReadString('\n')
 			mensagem = strings.TrimSpace(mensagem)
 
-			if mensagem == ""{
+			if mensagem == "" {
 				continue
 			}
 
 			dataChannel.SendText(mensagem)
 			GravarMensagem(db, "Eu", mensagem)
 		}
+	} else if escolha == "3" {
+		LimparHistorico(db)
 	}
 }

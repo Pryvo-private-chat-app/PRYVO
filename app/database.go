@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"database/sql"
 	"log"
 	_ "github.com/mattn/go-sqlite3"
@@ -36,5 +37,14 @@ func GravarMensagem (db *sql.DB, remetente string, texto string) {
 
 	if err != nil {
 		log.Println("Erro ao gravar mensagem:", err)
+	}
+}
+
+func LimparHistorico(db *sql.DB) {
+	_, err := db.Exec("DELETE FROM mensagens")
+	if err != nil {
+		log.Println("Erro ao apagar histórico:", err)
+	} else {
+		fmt.Println("\n[!] O histórico de mensagens foi apagado com sucesso.")
 	}
 }
