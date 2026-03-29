@@ -11,7 +11,10 @@ import (
 	"strings"
 
 	"github.com/pion/webrtc/v3"
+	"github.com/gorilla/websocket"
 )
+
+var conexaoServidor *websocket.Conn
 
 func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error) {
 	config := webrtc.Configuration{
@@ -76,7 +79,27 @@ func Decode(texto string, obj interface{}) {
 
 }
 
+// func escutarServidor() {
+// 	for {
+// 		_, mensagem, err := conexaoServidor.ReadMessage()
+// 		if err != nil {
+// 			fmt.Println("Erro, ", err)
+// 			break
+// 		}			
+// 		fmt.Println("Central diz: ", string(mensagem))
+// 	}
+// }
+
 func main() {
+
+	var err error
+
+	conexaoServidor, _, err = websocket.DefaultDialer.Dial("ws://localhost:8080/sinal", nil)
+	if err != nil {
+		fmt.Println("Erro, ", err)
+	}
+
+	// go escutarServidor()
 
 	db := InitDB()
 
@@ -107,16 +130,29 @@ func main() {
 
 		offerBase64 := Encode(peerConnection.LocalDescription())
 
-		fmt.Println("\n=== SALA CRIADA COM SUCESSO ===")
-		fmt.Println("Copia o código abaixo e envia ao teu amigo:")
-		fmt.Println("--------------------------------------------------")
-		fmt.Println(offerBase64)
-		fmt.Println("--------------------------------------------------")
-		fmt.Println("Fico à espera do do teu Amigo. Cola aqui o código e prime Enter")
+		// fmt.Println("\n=== SALA CRIADA COM SUCESSO ===")
+		// fmt.Println("Copia o código abaixo e envia ao teu amigo:")
+		// fmt.Println("--------------------------------------------------")
+		// fmt.Println(offerBase64)
+		// fmt.Println("--------------------------------------------------")
+		// fmt.Println("Fico à espera do do teu Amigo. Cola aqui o código e prime Enter")
 
-		leitor := bufio.NewReader(os.Stdin)
-		codigoAmigo, _ := leitor.ReadString('\n')
-		codigoAmigo = strings.TrimSpace(codigoAmigo)
+		// leitor := bufio.NewReader(os.Stdin)
+		// codigoAmigo, _ := leitor.ReadString('\n')
+		// codigoAmigo = strings.TrimSpace(codigoAmigo)
+
+		fmt.Println("\n=== A ENVIAR CONVITE PARA A CENTRAL ===")
+        conexaoServidor.WriteMessage(websocket.TextMessage, []byte(offerBase64))
+        
+        fmt.Println("À espera que um amigo entre na sala...")
+
+        _, mensagem, err := conexaoServidor.ReadMessage()
+        if err != nil {
+            log.Fatal("Erro a ler da central:", err)
+        }
+
+        codigoAmigo := string(mensagem)
+        fmt.Println("Resposta do amigo recebida! A ligar P2P...")
 
 		var answer webrtc.SessionDescription
 		Decode(codigoAmigo, &answer)
@@ -148,10 +184,20 @@ func main() {
 			log.Fatal(err)
 		}
 
-		fmt.Println("Cola o código que o teu amigo enviou e prime Enter:")
-		leitor := bufio.NewReader(os.Stdin)
-		codigoAmigo, _ := leitor.ReadString('\n')
-		codigoAmigo = strings.TrimSpace(codigoAmigo)
+		// fmt.Println("Cola o código que o teu amigo enviou e prime Enter:")
+		// leitor := bufio.NewReader(os.Stdin)
+		// codigoAmigo, _ := leitor.ReadString('\n')
+		// codigoAmigo = strings.TrimSpace(codigoAmigo)
+
+		fmt.Println("À espera do convite do anfitrião na Central...")
+		_, mensagem, err := conexaoServidor.ReadMessage()
+		if err != nil {
+			fmt.Println("Erro, ", err)
+		}
+		codigoAmigo := string(mensagem)
+
+		fmt.Println("Código recebido! A gerar resposta...")
+
 
 		var offer webrtc.SessionDescription
 		Decode(codigoAmigo, &offer)
@@ -177,11 +223,17 @@ func main() {
 
 		answerBase64 := Encode(peerConnection.LocalDescription())
 
-		fmt.Println("\n=== SUCESSO: RESPOSTA GERADA ===")
-		fmt.Println("Copia o código abaixo e devolve ao teu amigo (Host):")
-		fmt.Println("--------------------------------------------------")
-		fmt.Println(answerBase64)
-		fmt.Println("--------------------------------------------------")
+		// fmt.Println("\n=== SUCESSO: RESPOSTA GERADA ===")
+		// fmt.Println("Copia o código abaixo e devolve ao teu amigo (Host):")
+		// fmt.Println("--------------------------------------------------")
+		// fmt.Println(answerBase64)
+		// fmt.Println("--------------------------------------------------")
+
+		fmt.Println("A enviar a nossa resposta para o Anfitrião através da Central...")
+
+		conexaoServidor.WriteMessage(websocket.TextMessage, []byte(answerBase64))
+
+		fmt.Println("Resposta enviada! Ligação P2P direta estabelecida. Podes começar a teclar!")
 
 		leitorChat := bufio.NewReader(os.Stdin)
 
