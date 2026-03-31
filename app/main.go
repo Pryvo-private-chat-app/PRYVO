@@ -94,9 +94,10 @@ func main() {
 
 	var err error
 
-	conexaoServidor, _, err = websocket.DefaultDialer.Dial("wss://pryvo-central.onrender.com", nil)
+	conexaoServidor, _, err = websocket.DefaultDialer.Dial("wss://pryvo-central.onrender.com/sinal", nil)
 	if err != nil {
 		fmt.Println("Erro, ", err)
+		return
 	}
 
 	db := InitDB()
