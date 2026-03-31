@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"github.com/gorilla/websocket"
 )
 
@@ -44,11 +45,18 @@ func lidarComLigacao(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	porta := os.Getenv("PORT")
+
+	if porta == "" {
+		porta = "8080"
+	}
+
 	http.HandleFunc("/sinal", lidarComLigacao)
 
-	fmt.Println("o servidor está a trabalhar na porta 8080")
+	fmt.Println("o servidor está a trabalhar na porta"+porta)
 
-	err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":"+porta, nil)
 	if err != nil {
 		fmt.Println("Erro", err)
 	}
