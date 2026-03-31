@@ -14,6 +14,13 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+type Mensagem struct {
+	Tipo string `json:"tipo"`
+	NomeSala string `json:"nomeSala"`
+	Password string `json:"password"`
+	Dados string `json:"dados"`
+}
+
 var conexaoServidor *websocket.Conn
 
 func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error) {
@@ -104,10 +111,17 @@ func main() {
 
 	defer db.Close()
 
+
 	var escolha string
 	fmt.Println("Escolhe: [1] Criar Sala, [2] Entrar numa Sala ou [3] Limpar Histórico de Conversas")
 	fmt.Scanln(&escolha)
 	if escolha == "1" {
+		var password string
+		var sala string
+		fmt.Println("Cria um nome para a tua sala:")
+		fmt.Scanln(&sala)
+		fmt.Println("Cria uma password:")
+		fmt.Scanln(&password)
 		peerConnection, dataChannel, err := SetupWebRTC(db)
 		if err != nil {
 			log.Fatal("Erro fatal ao iniciar WebRTC:", err)
@@ -130,7 +144,14 @@ func main() {
 		offerBase64 := Encode(peerConnection.LocalDescription())
 
 		fmt.Println("\n=== A ENVIAR CONVITE PARA A CENTRAL ===")
-		conexaoServidor.WriteMessage(websocket.TextMessage, []byte(offerBase64))
+		// conexaoServidor.WriteMessage(websocket.TextMessage, []byte(offerBase64))
+		envelope := Mensagem{
+			Tipo: "criar",
+			NomeSala: sala,
+			Password: password,
+			Dados: offerBase64,
+		}
+		conexaoServidor.WriteJSON(envelope)
 
 		fmt.Println("À espera que um amigo entre na sala...")
 
@@ -166,18 +187,41 @@ func main() {
 		}
 
 	} else if escolha == "2" {
-
+		var password string
+		var sala string
+		fmt.Println("Qual é o nome da sala?")
+		fmt.Scanln(&sala)
+		fmt.Println("Qual é a password?")
+		fmt.Scanln(&password)
 		peerConnection, dataChannel, err := SetupWebRTC(db)
 		if err != nil {
 			log.Fatal(err)
 		}
+		envelopeEntrada := Mensagem{
+			Tipo:     "entrar",
+			NomeSala: sala,
+			Password: password,
+			Dados:    "",
+		}
+		conexaoServidor.WriteJSON(envelopeEntrada)
+
 
 		fmt.Println("À espera do convite do anfitrião na Central...")
 		_, mensagem, err := conexaoServidor.ReadMessage()
 		if err != nil {
 			fmt.Println("Erro, ", err)
 		}
+
+
+
 		codigoAmigo := string(mensagem)
+
+		if strings.Contains(codigoAmigo, "ERRO"){
+			fmt.Println("o Servidor recusou a entrada:", codigoAmigo)
+			return
+
+		}
+
 
 		fmt.Println("Código recebido! A gerar resposta...")
 
@@ -207,7 +251,15 @@ func main() {
 
 		fmt.Println("A enviar a nossa resposta para o Anfitrião através da Central...")
 
-		conexaoServidor.WriteMessage(websocket.TextMessage, []byte(answerBase64))
+		// conexaoServidor.WriteMessage(websocket.TextMessage, []byte(answerBase64))
+
+		envelopeResposta := Mensagem{
+			Tipo:     "resposta",
+			NomeSala: sala,
+			Password: password,
+			Dados:    answerBase64,
+		}
+		conexaoServidor.WriteJSON(envelopeResposta)
 
 		fmt.Println("Resposta enviada! Ligação P2P direta estabelecida. Podes começar a teclar!")
 

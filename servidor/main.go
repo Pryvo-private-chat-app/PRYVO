@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"encoding/json"
 	"github.com/gorilla/websocket"
 )
 
@@ -13,7 +14,21 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var clientes = make(map[*websocket.Conn]bool)
+// var clientes = make(map[*websocket.Conn]bool)
+
+type Mensagem struct {
+	Tipo string `json:"tipo"`
+	NomeSala string `json:"nomeSala"`
+	Password string `json:"password"`
+	Dados string `json:"dados"`
+}
+
+type Sala struct {
+	Password string
+	Clientes map[*websocket.Conn]bool
+}
+
+var salas = make(map[string]*Sala)
 
 func lidarComLigacao(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
