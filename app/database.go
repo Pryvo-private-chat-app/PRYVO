@@ -1,17 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
 	"log"
+
 	_ "modernc.org/sqlite"
 )
+
+// var nome, foto string
 
 func InitDB() *sql.DB {
 	db, err := sql.Open("sqlite", "./chat.db")
 	if err != nil {
 		log.Fatal("Erro ao abrir a base de dados: ", err)
 	}
+
+	db.SetMaxOpenConns(1)
 
 	sqlStmt := `
 	CREATE TABLE IF NOT EXISTS mensagens (
@@ -20,6 +25,11 @@ func InitDB() *sql.DB {
 		texto TEXT,
 		data_hora DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+		CREATE TABLE IF NOT EXISTS perfil (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		nome TEXT,
+		foto TEXT
+	);
 	`
 	_, err = db.Exec(sqlStmt)
 	if err != nil {
@@ -27,6 +37,29 @@ func InitDB() *sql.DB {
 	}
 
 	return db
+}
+
+func LerPerfil (db *sql.DB) (string, string, bool) {
+	var nome, foto string
+
+	err := db.QueryRow("SELECT nome, foto FROM perfil ORDER BY id DESC LIMIT 1").Scan(&nome, &foto)
+
+	if err != nil {
+		return "", "", false
+	}
+
+	return nome, foto, true
+}
+
+func GravarPerfil(db *sql.DB, nome string, foto string) {
+
+	instrucao := `Insert into perfil (nome, foto) VALUES (?, ?)`
+
+	_, err := db.Exec(instrucao, nome, foto)
+
+	if err != nil {
+		log.Println("Erro", err)
+	}
 }
 
 func GravarMensagem (db *sql.DB, remetente string, texto string) {

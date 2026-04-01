@@ -31,35 +31,6 @@ type Sala struct {
 
 var salas = make(map[string]*Sala)
 
-// func lidarComLigacao(w http.ResponseWriter, r *http.Request) {
-// 	ws, err := upgrader.Upgrade(w, r, nil)
-// 	if err != nil {
-// 		fmt.Println("Erro", err)
-// 		return
-// 	}
-
-// 	defer ws.Close()
-
-// 	clientes[ws] = true
-
-// 	for {
-// 		tipo, mensagem, err := ws.ReadMessage()
-// 		if err != nil {
-// 			fmt.Println("Erro", err)
-// 			delete(clientes, ws)
-// 			break
-// 		}
-
-// 		fmt.Println("Recebido:", string(mensagem))
-
-// 		for cliente := range clientes {
-// 			if cliente != ws {
-// 				cliente.WriteMessage(tipo, mensagem)
-// 			}
-// 		}
-// 	}
-// }
-
 func lidarComLigacao(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

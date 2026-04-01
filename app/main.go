@@ -21,7 +21,15 @@ type Mensagem struct {
 	Dados string `json:"dados"`
 }
 
+type MensagemChat struct {
+	Nome string `json:"nome"`
+	Foto string `json:"foto"`
+	Texto string `json:"texto"`
+}
+
 var conexaoServidor *websocket.Conn
+
+var meuNome, minhaFoto string
 
 func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error) {
 	config := webrtc.Configuration{
@@ -46,17 +54,46 @@ func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error
 		fmt.Println("\n[+] Canal de dados aberto! A encriptação DTLS está ativa. Podes começar a falar.")
 	})
 
+	// dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
+	// 	fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
+	// 	GravarMensagem(db, "Amigo", string(msg.Data))
+	// })
+
 	dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
-		fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
-		GravarMensagem(db, "Amigo", string(msg.Data))
+		var msgRecebida MensagemChat
+		err := json.Unmarshal(msg.Data, &msgRecebida)
+		
+		if err != nil {
+			fmt.Printf("\n[Desconhecido]: %s\n", string(msg.Data))
+			GravarMensagem(db, "Desconhecido", string(msg.Data))
+			return
+		}
+		fmt.Printf("\n[%s]: %s\n", msgRecebida.Nome, msgRecebida.Texto)
+		GravarMensagem(db, msgRecebida.Nome, msgRecebida.Texto)
 	})
 
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
 		d.OnMessage(func(msg webrtc.DataChannelMessage) {
-			fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
-			GravarMensagem(db, "Amigo", string(msg.Data))
+			var msgRecebida MensagemChat
+			err := json.Unmarshal(msg.Data, &msgRecebida)
+			
+			if err != nil {
+				fmt.Printf("\n[Desconhecido]: %s\n", string(msg.Data))
+				GravarMensagem(db, "Desconhecido", string(msg.Data))
+				return
+			}
+			
+			fmt.Printf("\n[%s]: %s\n", msgRecebida.Nome, msgRecebida.Texto)
+			GravarMensagem(db, msgRecebida.Nome, msgRecebida.Texto)
 		})
 	})
+
+	// peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+	// 	d.OnMessage(func(msg webrtc.DataChannelMessage) {
+	// 		fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
+	// 		GravarMensagem(db, "Amigo", string(msg.Data))
+	// 	})
+	// })
 
 	return peerConnection, dataChannel, nil
 }
@@ -86,17 +123,6 @@ func Decode(texto string, obj interface{}) {
 
 }
 
-// func escutarServidor() {
-// 	for {
-// 		_, mensagem, err := conexaoServidor.ReadMessage()
-// 		if err != nil {
-// 			fmt.Println("Erro, ", err)
-// 			break
-// 		}
-// 		fmt.Println("Central diz: ", string(mensagem))
-// 	}
-// }
-
 func main() {
 
 	var err error
@@ -108,6 +134,21 @@ func main() {
 	}
 
 	db := InitDB()
+
+	nomeLido, fotoLida, existe := LerPerfil(db)
+
+	switch existe {
+	case false:
+		fmt.Println("Bem vindo ao PRYVO.\nQual é o teu nome?")
+		fmt.Scanln(&meuNome)
+		fmt.Println("Escolhe uma foto de perfil:")
+		fmt.Scanln(&minhaFoto)
+		GravarPerfil(db, meuNome, minhaFoto)
+	case true:
+		meuNome = nomeLido
+		minhaFoto = fotoLida
+		fmt.Println("Bem-vindo/a, " + meuNome + "!")
+	}
 
 	defer db.Close()
 
@@ -144,7 +185,6 @@ func main() {
 		offerBase64 := Encode(peerConnection.LocalDescription())
 
 		fmt.Println("\n=== A ENVIAR CONVITE PARA A CENTRAL ===")
-		// conexaoServidor.WriteMessage(websocket.TextMessage, []byte(offerBase64))
 		envelope := Mensagem{
 			Tipo: "criar",
 			NomeSala: sala,
@@ -181,7 +221,19 @@ func main() {
 				continue
 			}
 
-			dataChannel.SendText(mensagem)
+			envelopeP2P := MensagemChat{
+				Nome: meuNome,
+				Foto: minhaFoto,
+				Texto: mensagem,
+			}
+
+			bytesDoEnvelope, err := json.Marshal(envelopeP2P)
+			if err != nil {
+				fmt.Println("Erro", err)
+				continue
+			}
+
+			dataChannel.SendText(string(bytesDoEnvelope))
 			GravarMensagem(db, "Eu", mensagem)
 
 		}
@@ -251,8 +303,6 @@ func main() {
 
 		fmt.Println("A enviar a nossa resposta para o Anfitrião através da Central...")
 
-		// conexaoServidor.WriteMessage(websocket.TextMessage, []byte(answerBase64))
-
 		envelopeResposta := Mensagem{
 			Tipo:     "resposta",
 			NomeSala: sala,
@@ -273,7 +323,20 @@ func main() {
 				continue
 			}
 
-			dataChannel.SendText(mensagem)
+
+			envelopeP2P := MensagemChat{
+				Nome: meuNome,
+				Foto: minhaFoto,
+				Texto: mensagem,
+			}
+
+			bytesDoEnvelope, err := json.Marshal(envelopeP2P)
+			if err != nil {
+				fmt.Println("Erro", err)
+				continue
+			}
+
+			dataChannel.SendText(string(bytesDoEnvelope))
 			GravarMensagem(db, "Eu", mensagem)
 		}
 	} else if escolha == "3" {
