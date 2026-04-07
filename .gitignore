@@ -11,3 +11,7 @@ main.exe
 Thumbs.db
 
 .env
+
+# Direnv local configuration
+.envrc
+.direnv/
