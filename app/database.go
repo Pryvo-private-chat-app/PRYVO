@@ -8,8 +8,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// var nome, foto string
-
 func InitDB() *sql.DB {
 	db, err := sql.Open("sqlite", "./chat.db")
 	if err != nil {
@@ -39,7 +37,7 @@ func InitDB() *sql.DB {
 	return db
 }
 
-func LerPerfil (db *sql.DB) (string, string, bool) {
+func LerPerfil(db *sql.DB) (string, string, bool) {
 	var nome, foto string
 
 	err := db.QueryRow("SELECT nome, foto FROM perfil ORDER BY id DESC LIMIT 1").Scan(&nome, &foto)
@@ -62,7 +60,7 @@ func GravarPerfil(db *sql.DB, nome string, foto string) {
 	}
 }
 
-func GravarMensagem (db *sql.DB, remetente string, texto string) {
+func GravarMensagem(db *sql.DB, remetente string, texto string) {
 
 	instrucao := `Insert Into mensagens (remetente, texto) VALUES (?, ?)`
 
@@ -80,4 +78,28 @@ func LimparHistorico(db *sql.DB) {
 	} else {
 		fmt.Println("\n[!] O histórico de mensagens foi apagado com sucesso.")
 	}
+}
+
+func LerHistorico(db *sql.DB) {
+	linhas, err := db.Query("SELECT data_hora, remetente, texto FROM mensagens ORDER BY id ASC")
+	if err != nil {
+		log.Println("Erro", err)
+		return
+	}
+	defer linhas.Close()
+
+	fmt.Println("\n=== HISTÓRICO DE MENSAGENS ===")
+
+	for linhas.Next() {
+		var data, remetente, msg string
+
+		err := linhas.Scan(&data, &remetente, &msg)
+		if err != nil {
+			fmt.Println("Erro", err)
+			continue
+		}
+
+		fmt.Printf("[%s] %s: %s\n", data, remetente, msg)
+	}
+	fmt.Println("==============================\n")
 }

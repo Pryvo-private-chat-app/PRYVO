@@ -15,15 +15,15 @@ import (
 )
 
 type Mensagem struct {
-	Tipo string `json:"tipo"`
+	Tipo     string `json:"tipo"`
 	NomeSala string `json:"nomeSala"`
 	Password string `json:"password"`
-	Dados string `json:"dados"`
+	Dados    string `json:"dados"`
 }
 
 type MensagemChat struct {
-	Nome string `json:"nome"`
-	Foto string `json:"foto"`
+	Nome  string `json:"nome"`
+	Foto  string `json:"foto"`
 	Texto string `json:"texto"`
 }
 
@@ -54,15 +54,10 @@ func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error
 		fmt.Println("\n[+] Canal de dados aberto! A encriptação DTLS está ativa. Podes começar a falar.")
 	})
 
-	// dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
-	// 	fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
-	// 	GravarMensagem(db, "Amigo", string(msg.Data))
-	// })
-
 	dataChannel.OnMessage(func(msg webrtc.DataChannelMessage) {
 		var msgRecebida MensagemChat
 		err := json.Unmarshal(msg.Data, &msgRecebida)
-		
+
 		if err != nil {
 			fmt.Printf("\n[Desconhecido]: %s\n", string(msg.Data))
 			GravarMensagem(db, "Desconhecido", string(msg.Data))
@@ -76,24 +71,17 @@ func SetupWebRTC(db *sql.DB) (*webrtc.PeerConnection, *webrtc.DataChannel, error
 		d.OnMessage(func(msg webrtc.DataChannelMessage) {
 			var msgRecebida MensagemChat
 			err := json.Unmarshal(msg.Data, &msgRecebida)
-			
+
 			if err != nil {
 				fmt.Printf("\n[Desconhecido]: %s\n", string(msg.Data))
 				GravarMensagem(db, "Desconhecido", string(msg.Data))
 				return
 			}
-			
+
 			fmt.Printf("\n[%s]: %s\n", msgRecebida.Nome, msgRecebida.Texto)
 			GravarMensagem(db, msgRecebida.Nome, msgRecebida.Texto)
 		})
 	})
-
-	// peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
-	// 	d.OnMessage(func(msg webrtc.DataChannelMessage) {
-	// 		fmt.Printf("\n[Amigo]: %s\n", string(msg.Data))
-	// 		GravarMensagem(db, "Amigo", string(msg.Data))
-	// 	})
-	// })
 
 	return peerConnection, dataChannel, nil
 }
@@ -152,9 +140,8 @@ func main() {
 
 	defer db.Close()
 
-
 	var escolha string
-	fmt.Println("Escolhe: [1] Criar Sala, [2] Entrar numa Sala ou [3] Limpar Histórico de Conversas")
+	fmt.Println("Escolhe: [1] Criar Sala, [2] Entrar numa Sala, [3] Limpar Histórico de Conversas, [4] Ler Histórico de Conversa")
 	fmt.Scanln(&escolha)
 	if escolha == "1" {
 		var password string
@@ -186,10 +173,10 @@ func main() {
 
 		fmt.Println("\n=== A ENVIAR CONVITE PARA A CENTRAL ===")
 		envelope := Mensagem{
-			Tipo: "criar",
+			Tipo:     "criar",
 			NomeSala: sala,
 			Password: password,
-			Dados: offerBase64,
+			Dados:    offerBase64,
 		}
 		conexaoServidor.WriteJSON(envelope)
 
@@ -222,8 +209,8 @@ func main() {
 			}
 
 			envelopeP2P := MensagemChat{
-				Nome: meuNome,
-				Foto: minhaFoto,
+				Nome:  meuNome,
+				Foto:  minhaFoto,
 				Texto: mensagem,
 			}
 
@@ -257,23 +244,19 @@ func main() {
 		}
 		conexaoServidor.WriteJSON(envelopeEntrada)
 
-
 		fmt.Println("À espera do convite do anfitrião na Central...")
 		_, mensagem, err := conexaoServidor.ReadMessage()
 		if err != nil {
 			fmt.Println("Erro, ", err)
 		}
 
-
-
 		codigoAmigo := string(mensagem)
 
-		if strings.Contains(codigoAmigo, "ERRO"){
+		if strings.Contains(codigoAmigo, "ERRO") {
 			fmt.Println("o Servidor recusou a entrada:", codigoAmigo)
 			return
 
 		}
-
 
 		fmt.Println("Código recebido! A gerar resposta...")
 
@@ -323,10 +306,9 @@ func main() {
 				continue
 			}
 
-
 			envelopeP2P := MensagemChat{
-				Nome: meuNome,
-				Foto: minhaFoto,
+				Nome:  meuNome,
+				Foto:  minhaFoto,
 				Texto: mensagem,
 			}
 
@@ -341,5 +323,7 @@ func main() {
 		}
 	} else if escolha == "3" {
 		LimparHistorico(db)
+	} else if escolha == "4" {
+		LerHistorico(db)
 	}
 }
