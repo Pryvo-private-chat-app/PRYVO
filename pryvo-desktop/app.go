@@ -1,9 +1,20 @@
 package main
 
+// import (
+// 	"context"
+// 	"database/sql"
+// 	"fmt"
+// )
+
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -48,4 +59,30 @@ func (a *App) VerificarPerfil() map[string]interface{} {
 func (a *App) GravarPerfil(nome, foto string) bool {
 	GravarPerfil(a.db, nome, foto)
 	return true
+}
+
+// EscolherFoto abre o explorador nativo do Linux/Windows/Mac
+func (a *App) EscolherFoto() string {
+	caminhoFicheiro, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Escolhe a tua foto",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Imagens", Pattern: "*.jpg;*.jpeg;*.png"},
+		},
+	})
+
+	if err != nil || caminhoFicheiro == "" {
+		return ""
+	}
+
+	bytes, err := os.ReadFile(caminhoFicheiro)
+	if err != nil {
+		fmt.Println("Erro a ler ficheiro:", err)
+		return ""
+	}
+
+	mimeType := http.DetectContentType(bytes)
+
+	base64Str := base64.StdEncoding.EncodeToString(bytes)
+
+	return "data:" + mimeType + ";base64," + base64Str
 }

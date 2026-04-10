@@ -22,12 +22,15 @@
 	nodejs
 	gtk3
 	webkitgtk_4_1
+	gsettings-desktop-schemas
       ];
 
       shellHook = ''
 	echo "Hello There!"
         echo "Go version: $(go version)"
-	echo "Node version $(node -v)"
+        echo "Node version $(node -v)"
+        
+        export XDG_DATA_DIRS=${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}:${pkgs.gtk3}/share/gsettings-schemas/${pkgs.gtk3.name}:$XDG_DATA_DIRS
       '';
     };
   };
