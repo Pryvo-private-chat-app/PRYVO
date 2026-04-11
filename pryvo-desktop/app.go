@@ -81,9 +81,20 @@ func (a *App) SetupWebRTC() error {
 	})
 
 	configurarCanal(dataChannel)
+	// peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+	// 	configurarCanal(d)
+	// })
+	// return nil
 	peerConnection.OnDataChannel(func(d *webrtc.DataChannel) {
+		a.dc = d
+
+		d.OnOpen(func() {
+			runtime.EventsEmit(a.ctx, "room_ready", "P2P conection established! You can start chatting.")
+		})
+
 		configurarCanal(d)
 	})
+
 	return nil
 }
 
