@@ -26,8 +26,8 @@ body {
 } */
 
 :root{
-    --primary: #00a884;
-    --primary-hover: #008f6f;
+    --primary: #000000;
+    --primary-hover: #211f1f;
     --bg-color: #f0f2f5;
     --chat-bg: #eFEAE2;
     --text-dark: #111b21;
@@ -36,7 +36,7 @@ body {
     --bubble-mine: #dcf8c6;
     --bubble-theirs: #ffffff;
     --white: #ffffff;
-    --danger: #ef4444;
+    --danger: #e91515;
 }
 
 html, body {
