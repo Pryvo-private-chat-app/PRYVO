@@ -1,4 +1,10 @@
+
 # 🛡️ PRYVO - Encrypted P2P Desktop Chat
+
+<p align="center">
+  <img width="500" height="500" alt="pryvo" src="https://github.com/user-attachments/assets/e527677f-f132-471c-b880-cb0a8f041964" />
+
+</p>   
 
 Welcome to **PRYVO**, a modern, decentralized, and fully private desktop chat application built with **Go** and **Vanilla Javascript**. 
 
@@ -18,7 +24,6 @@ Unlike traditional messaging apps, PRYVO does not store your messages on a centr
 * **Networking:** WebSockets (Signaling) + WebRTC (P2P Data Channels)
 
 ## 🚀 How to Run Locally
-s
 ### Prerequisites
 1. Install [Go](https://golang.org/dl/)
 2. Install [Node.js](https://nodejs.org/en/download/)
@@ -45,3 +50,6 @@ The compiled application will be available in the `build/bin/` directory.
 
 ---
 *Built with ❤️ and privacy in mind by Guilherme Marques*
+
+## License
+GPL-3.0 license © 2026 Guilherme Marques.
