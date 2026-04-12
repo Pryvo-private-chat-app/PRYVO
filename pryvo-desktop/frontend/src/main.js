@@ -35,13 +35,42 @@ function desenharEcraRegisto() {
 
 window.minhaFotoBase64 = "";
 
+// window.processarFoto = function() {
+//     EscolherFoto().then(imagemBase64 => {
+//         if (imagemBase64 !== "") {
+//             window.minhaFotoBase64 = imagemBase64; 
+//             let imgPreview = document.getElementById("previewFoto");
+//             imgPreview.src = window.minhaFotoBase64;
+//             imgPreview.style.display = "block";
+//         }
+//     }).catch(erro => {
+//         console.error("Erro a abrir janela nativa:", erro);
+//     });
+// };
+
 window.processarFoto = function() {
     EscolherFoto().then(imagemBase64 => {
         if (imagemBase64 !== "") {
-            window.minhaFotoBase64 = imagemBase64; 
-            let imgPreview = document.getElementById("previewFoto");
-            imgPreview.src = window.minhaFotoBase64;
-            imgPreview.style.display = "block";
+            
+            let img = new Image();
+            
+            img.onload = function() {
+                let canvas = document.createElement('canvas');
+                let tamanho = 100; // Tamanho ideal para as nossas bolhas de chat
+                canvas.width = tamanho;
+                canvas.height = tamanho;
+
+                let ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, tamanho, tamanho);
+
+                window.minhaFotoBase64 = canvas.toDataURL('image/jpeg', 0.5);
+
+                let imgPreview = document.getElementById("previewFoto");
+                imgPreview.src = window.minhaFotoBase64;
+                imgPreview.style.display = "block";
+            };
+            
+            img.src = imagemBase64;
         }
     }).catch(erro => {
         console.error("Erro a abrir janela nativa:", erro);
