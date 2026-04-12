@@ -44,3 +44,7 @@ The compiled application will be available in the `build/bin/` directory.
 
 ---
 *Built with ❤️ and privacy in mind by Guilherme Marques*
+
+## License
+
+GNU GENERAL PUBLIC LICENSE License © 2026 Guilherme Marques.
