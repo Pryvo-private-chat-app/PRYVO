@@ -1,4 +1,10 @@
+
 # 🛡️ PRYVO - Encrypted P2P Desktop Chat
+
+<p align="center">
+  <img width="500" height="500" alt="pryvo" src="https://github.com/user-attachments/assets/e527677f-f132-471c-b880-cb0a8f041964" />
+
+</p>   
 
 Welcome to **PRYVO**, a modern, decentralized, and fully private desktop chat application built with **Go** and **Vanilla Javascript**. 
 
