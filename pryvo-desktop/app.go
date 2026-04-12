@@ -449,20 +449,49 @@ func (a *App) EscolherFoto() string {
 	return "data:" + mimeType + ";base64," + base64Str
 }
 
+// func (a *App) EnviarMensagemNet(texto string) {
+// 	fmt.Println("👉 A preparar para enviar:", texto)
+
+// 	if a.dc != nil {
+// 		mensagem := ChatMensagem{
+// 			Nome:  a.meuNome,
+// 			Foto:  a.minhaFoto,
+// 			Texto: texto,
+// 		}
+
+// 		bytesDoJson, err := json.Marshal(mensagem)
+// 		if err == nil {
+// 			fmt.Println("👉 A enviar para o túnel WebRTC...")
+// 			a.dc.SendText(string(bytesDoJson))
+// 		} else {
+// 			fmt.Println("❌ ERRO a empacotar JSON:", err)
+// 		}
+// 	} else {
+// 		fmt.Println("❌ ERRO GRAVE: O túnel (a.dc) está desligado/nil!")
+// 	}
+// }
+
 func (a *App) EnviarMensagemNet(texto string) {
 	fmt.Println("👉 A preparar para enviar:", texto)
 
 	if a.dc != nil {
 		mensagem := ChatMensagem{
 			Nome:  a.meuNome,
-			Foto:  a.minhaFoto,
+			Foto:  "", // ⚠️ O TRUQUE ESTÁ AQUI: Não enviamos a foto para não entupir!
 			Texto: texto,
 		}
 
 		bytesDoJson, err := json.Marshal(mensagem)
 		if err == nil {
-			fmt.Println("👉 A enviar para o túnel WebRTC...")
-			a.dc.SendText(string(bytesDoJson))
+			fmt.Println("👉 A enviar para o túnel WebRTC... Tamanho:", len(bytesDoJson), "bytes")
+
+			// Atiramos para o túnel, mas agora VERIFICAMOS se ele aceitou!
+			errEnvio := a.dc.SendText(string(bytesDoJson))
+			if errEnvio != nil {
+				fmt.Println("❌ O TÚNEL REJEITOU A MENSAGEM:", errEnvio)
+			} else {
+				fmt.Println("👉 O túnel engoliu a mensagem com sucesso!")
+			}
 		} else {
 			fmt.Println("❌ ERRO a empacotar JSON:", err)
 		}
