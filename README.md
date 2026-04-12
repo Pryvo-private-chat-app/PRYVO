@@ -18,7 +18,6 @@ Unlike traditional messaging apps, PRYVO does not store your messages on a centr
 * **Networking:** WebSockets (Signaling) + WebRTC (P2P Data Channels)
 
 ## 🚀 How to Run Locally
-s
 ### Prerequisites
 1. Install [Go](https://golang.org/dl/)
 2. Install [Node.js](https://nodejs.org/en/download/)
